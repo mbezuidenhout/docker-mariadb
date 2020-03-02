@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM arm32v6/alpine:latest
 
 ENV LC_ALL=en_GB.UTF-8
 
