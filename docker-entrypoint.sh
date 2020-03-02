@@ -45,6 +45,29 @@ _get_config() {
 
 DATA_DIR="$(_get_config 'datadir')"
 
+group="mysql"
+if [ -n "${MYSQL_RUN_GID}" ]; then
+    if [ ! $(getent group database) ]; then
+        addgroup -g ${MYSQL_RUN_GID} database 
+    fi
+    group="database"
+    echo "Changing db files group ownership to ${group}."
+fi
+
+# Change ownership
+user="mysql"
+if [ -n "${MYSQL_RUN_UID}" ]; then
+   if [ ! $(getent passwd database) ]; then
+        adduser -h /var/lib/mysql -g "" -G ${group} -H -D -u ${MYSQL_RUN_UID} -s /sbin/nologin database
+    fi
+    user="database"
+    sed -i 's/^user=mysql$/user=database/' /etc/my.cnf
+    echo "Changing db files user ownership to ${user}."
+fi
+
+chown -R "${user}":"${group}" "$DATA_DIR"
+#chown -R "${user}":"${group}" /var/run/mysqld/
+
 # Initialize database if necessary
 if [ ! -d "$DATA_DIR/mysql" ]; then
   file_env 'MYSQL_ROOT_PASSWORD'
@@ -171,25 +194,4 @@ SQL
   echo
 fi
 
-group="mysql"
-if [ -n "${MYSQL_RUN_GID}" ]; then
-    if [ ! $(getent group database) ]; then
-        addgroup -g ${MYSQL_RUN_GID} database 
-    fi
-    group="database"
-    echo "Changing db files group ownership to ${group}."
-fi
-
-user="mysql"
-if [ -n "${MYSQL_RUN_UID}" ]; then
-   if [ ! $(getent passwd database) ]; then
-        adduser -h /var/lib/mysql -g "" -G ${group} -H -D -u ${MYSQL_RUN_UID} -s /sbin/nologin database
-    fi
-    user="database"
-    sed -i 's/^user=mysql$/user=database/' /etc/my.cnf
-    echo "Changing db files user ownership to ${user}."
-fi
-
-chown -R "${user}":"${group}" "$DATA_DIR"
-chown -R "${user}":"${group}" /var/run/mysqld/
 exec "$@"
